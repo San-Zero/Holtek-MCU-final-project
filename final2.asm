@@ -1,163 +1,116 @@
 include HT66F70A.inc
-;====================================================
-ds  .section    'data'
-TIME_A		DB		?	;分	十位數
-TIME_B		DB		?	;分	個位數
-TIME_C		DB		?	;秒 十位數
-TIME_D		DB		?	;秒 個位數
-DEL1		DB		?	;延遲副程式變數
-DEL2		DB		?	;延遲副程式變數
-DEL3		DB		?	;延遲副程式變數
-DELB		DB		?
-COUNT_A		DB		?	;表格計數
-COUNT_B		DB		?	;表格計數
-COUNT_C		DB		?	;表格計數
-COUNT_D		DB		?	;表格計數
-COUNT_KY	DB		?	;鍵盤計數
-COUNT_BEEP	DB		?
-KEY 		DB 		?
+
+ds		.section		'data'
+DEL1		DB		?
+DEL2		DB		?
+DEL3		DB		?
+DC_FLAG		DBIT		
+LINE_COUNT	DB		?
+LINE_COUNT1 DB		?
+LINE_COUNT2 DB		?
+DATA		DB		?
+DISPLAY_TIMES	DB	?
+
 STACK_A		DB		?
 STACK_PSW	DB		?
 STACK_DEL1 	DB		?
 STACK_DEL2 	DB		?
-STACK_DEL3 	DB		?	
-;====================================================
+STACK_DEL3 	DB		?
+STACK_LINE_COUNT	DB	?
+STACK_DATA	DB		?
 
-ROMBANK 0 cs
-cs  .section    at  000h    'code'
+STACK_TBHP	DB		?
+STACK_TBLP	DB		?
 
-	ORG     00H             ;程式起始位置
+DELA 	DB ?
+PITCH	DB ?		
+COUNT1 	DB ?
+COUNT2 	DB ?
+
+
+LCM_EN		EQU		PE.2
+LCM_RW		EQU		PE.1
+LCM_RS		EQU		PE.0
+LCM_ENC		EQU		PEC.2
+LCM_RWC		EQU		PEC.1
+LCM_RSC		EQU		PEC.0
+LCM_DATAPORT	EQU	PG
+LCM_DATAPORTC	EQU	PGC
+
+ROMBANK	0 cs
+
+cs		.section	at	00h		'code'
+	ORG		00H
 	JMP		INIT
 	ORG		04H
-	JMP		ISR_EXTINT0
-INIT:                           
-	CLR     PCC             ;七段顯示器輸出
-	CLR		PDC				;七段顯示器掃描輸出
-	CLR		PEC
-	CLR 	PGC.0
-	MOV     A,10101111B
-	MOV     WDTC,A          ;關閉看門狗計時器
-	MOV		A,00010000B		;CTM控制暫存器0,CLK=fH(fsys/16=500KHz)
-	MOV		TM0C0,A			
-	MOV		A,00000000B		;CTM控制暫存器1,Compare Match Output Mode
-	MOV		TM0C1,A			;CCLR=1,設定使用A比較器
-	MOV		A,0FFH			;設定計數比較值=03FFH
-	MOV		TM0AL,A			
-	MOV		A,03H
-	MOV		TM0AH,A
-	MOV		A,00000011B
+	JMP		ISR_EXTINT0	
+	ORG		08H
+	JMP		ISR_EXTINT1	
+	ORG		30H
+	JMP		ISR_EXTINT2
+	ORG		34H
+	JMP		ISR_EXTINT3
+INIT:	
+	MOV		A,10101111B
+	MOV		WDTC,A
+	CALL	INIT_LCM
+	
+	MOV		A,10101010B
+	MOV		INTEG,A
+	
 	SET		PAPU.3
 	SET		PAC.3
-	MOV		INTEG,A
 	SET		INT0E
+	
+	SET		PAPU.4
+	SET		PAC.4
+	SET		INT1E
+	
+	SET		PCPU.4
+	SET		PCC.4
+	SET		INT2E
+	
+	SET		PCPU.5
+	SET		PCC.5
+	SET		INT3E
 	SET		EMI
-	
-	MOV		A,5				;測試用，設定初值
-	;MOV		TIME_A,A
-	;MOV		TIME_B,A
-	MOV		TIME_D,A
-	CLR		TIME_A
-	CLR		TIME_B
-	CLR		TIME_C
-	MOV		A,TIME_A		;COUNT=TIME_D+1，目的為避免系統進入TRANS_7的ADDM，無法跳脫出來
-	ADD		A,1
-	MOV		COUNT_A,A
-	MOV		A,TIME_B		;COUNT=TIME_D+1，目的為避免系統進入TRANS_7的ADDM，無法跳脫出來
-	ADD		A,1
-	MOV		COUNT_B,A
-	MOV		A,TIME_C		;COUNT=TIME_D+1，目的為避免系統進入TRANS_7的ADDM，無法跳脫出來
-	ADD		A,1
-	MOV		COUNT_C,A
-	MOV		A,TIME_D		;COUNT=TIME_D+1，目的為避免系統進入TRANS_7的ADDM，無法跳脫出來
-	ADD		A,1
-	MOV		COUNT_D,A
-	
-	SET		T0ON			;開始計數
-TIMER:
-	MOV		A,100
+	CALL	CLEAR_LCM
+MAIN:		
+	MOV		A,80H			;設定顯示第一列，位置0
+	CALL	WLCMC
 	CALL	DELAY
-	DEC		TIME_D
-	SDZ		COUNT_D
-	JMP		LIGHT
-	JMP		INIT_TIME_D
-TIME_OUT:
-	SNZ		COUNT_A
-	JMP		TIMER
-	SNZ		COUNT_B
-	JMP		TIMER
-	SNZ		COUNT_C
-	JMP		TIMER
-	SNZ		COUNT_D
-	JMP		TIMER
-	CALL	BEEP
-	JMP		TIME_OUT
-INIT_TIME_B:
-	MOV		A,9
-	MOV		TIME_B,A
-	DEC		TIME_A
-	SDZ		COUNT_A
-	JMP		TIMER
-	JMP		TIME_OUT
-INIT_TIME_C:
-	MOV		A,5
-	MOV		TIME_C,A
-	DEC		TIME_B
-	SDZ		COUNT_B
-	JMP		TIMER
-	JMP		INIT_TIME_B
-INIT_TIME_D:
-	MOV		A,9
-	MOV		TIME_D,A
-	MOV		A,10
-	MOV		COUNT,A
-	DEC		TIME_C
-	SDZ		COUNT_C
-	JMP		TIMER					
-	JMP		INIT_TIME_C
-LIGHT:
-	CLR		T0AF			;清除A比較器中斷旗標
-	MOV		A,01H			;點亮第一顆顯示器
-	MOV		PD,A
-	MOV		A,TIME_D			;送出點亮數字
-	CALL	TRANS_7
-	MOV		PC,A
-MATCH1:
-	SNZ		T0AF			;SNZ: 不是0就跳
-	JMP		MATCH1
-	CLR		T0AF			;清除A比較器中斷旗標
-	
-	MOV		A,02H			;點亮第二顆顯示器
-	MOV		PD,A
-	MOV		A,TIME_C			;送出點亮數字
-	CALL	TRANS_7
-	MOV		PC,A
-MATCH2:
-	SNZ		T0AF
-	JMP		MATCH2
-	CLR		T0AF			;清除A比較器中斷旗標
-	
-	MOV		A,04H			;點亮第三顆顯示器
-	MOV		PD,A
-	MOV		A,TIME_B			;送出點亮數字
-	CALL	TRANS_7
-	MOV		PC,A
-MATCH3:
-	SNZ		T0AF
-	JMP		MATCH3
-	CLR		T0AF			;清除A比較器中斷旗標
-	
-	MOV		A,08H			;點亮第四顆顯示器
-	MOV		PD,A	
-	MOV		A,TIME_A		;送出點亮數字
-	CALL	TRANS_7
-	MOV		PC,A
-MATCH4:
-	SNZ		T0AF
-	JMP		MATCH4
-	CLR		T0AF			;清除A比較器中斷旗標
-	JMP		TIMER
-	
-;=================發生中斷=======================
+	MOV		A,HIGH 	TAB_DATA_1
+	MOV		TBHP,A
+	MOV		A,LOW 	TAB_DATA_1
+	MOV		TBLP,A
+	MOV		A,0BH
+	MOV		LINE_COUNT1,A	;設定第一列字數
+	MOV		A,0AH
+	MOV		LINE_COUNT2,A	;設定第二列字數
+MAIN_1:
+	TABRD	DATA
+	MOV		A,DATA			;寫入顯示資料
+	CALL	WLCMD
+	CALL	DELAY
+	INC		TBLP
+	SDZ		LINE_COUNT1		;可顯示字數是否為0?
+	JMP		MAIN_1			;不是0，繼續顯示下個字
+	MOV		A,0C0H			;設定顯示第二列，位置0
+	CALL	WLCMC
+	CALL	DELAY
+MAIN_2:
+	TABRD	DATA
+	MOV		A,DATA			;寫入顯示資料
+	CALL	WLCMD
+	CALL	DELAY
+	INC		TBLP
+	SDZ		LINE_COUNT2		;可顯示字數是否為0?
+	JMP		MAIN_2			;不是0，繼續顯示下個字
+	JMP		MAIN			;不是0，繼續顯示下個字
+
+;===========================================
+;	中斷發生，撥放第1首歌曲
+;===========================================
 ISR_EXTINT0:
 	MOV		STACK_A,A		;累加器資料暫存
 	MOV		A,STATUS		
@@ -168,201 +121,588 @@ ISR_EXTINT0:
 	MOV		STACK_DEL2,A
 	MOV		A,DEL3			;DEL3變數暫存
 	MOV		STACK_DEL3,A
-SET_TIME:
-	CLR		TIME_A
-	CLR		TIME_B
-	CLR		TIME_C
-	CLR		TIME_D
-	MOV		A,TIME_D		;COUNT=TIME_D+1，目的為避免系統進入TRANS_7的ADDM，無法跳脫出來
-	ADD		A,1
-	MOV		COUNT,A
-	JMP		LIGHT_2
-SET_TIME_2:	
-	CALL 	KY				;呼叫鍵盤掃描副程式
-	MOV 	A,16
-	XOR 	A,KEY
-	SZ 		Z				;按鍵沒有被按下
-	JMP 	SET_TIME		;再次掃描鍵盤
-	SNZ		TIME_A
-	JMP		SET_TIME_A
-	SNZ		TIME_B
-	JMP		SET_TIME_B
-	SNZ		TIME_C
-	JMP		SET_TIME_C
-	SNZ		TIME_D
-	JMP		SET_TIME_D	
-	JMP		TIME_SETTED
-SET_TIME_A:
-	MOV 	A,KEY
-	MOV		TIME_A,A
-	JMP		SET_TIME
-SET_TIME_B:
-	MOV 	A,KEY
-	MOV		TIME_B,A
-	JMP		SET_TIME
-SET_TIME_C:
-	MOV 	A,KEY
-	MOV		TIME_C,A
-	JMP		SET_TIME
-SET_TIME_D:
-	MOV 	A,KEY
-	MOV		TIME_D,A
-	MOV		A,TIME_D		;COUNT=TIME_D+1，目的為避免系統進入TRANS_7的ADDM，無法跳脫出來
-	ADD		A,1
-	MOV		COUNT,A
-	JMP		SET_TIME
-LIGHT_2:
-	CLR		T0AF			;清除A比較器中斷旗標
-	MOV		A,01H			;點亮第一顆顯示器
-	MOV		PD,A
-	MOV		A,TIME_D			;送出點亮數字
-	CALL	TRANS_7
-	MOV		PC,A
-MATCH1_2:
-	SNZ		T0AF			;SNZ: 不是0就跳
-	JMP		MATCH1_2
-	CLR		T0AF			;清除A比較器中斷旗標
-	
-	MOV		A,02H			;點亮第二顆顯示器
-	MOV		PD,A
-	MOV		A,TIME_C			;送出點亮數字
-	CALL	TRANS_7
-	MOV		PC,A
-MATCH2_2:
-	SNZ		T0AF
-	JMP		MATCH2_2
-	CLR		T0AF			;清除A比較器中斷旗標
-	
-	MOV		A,04H			;點亮第三顆顯示器
-	MOV		PD,A
-	MOV		A,TIME_B			;送出點亮數字
-	CALL	TRANS_7
-	MOV		PC,A
-MATCH3_2:
-	SNZ		T0AF
-	JMP		MATCH3_2
-	CLR		T0AF			;清除A比較器中斷旗標
-	
-	MOV		A,08H			;點亮第四顆顯示器
-	MOV		PD,A	
-	MOV		A,TIME_A		;送出點亮數字
-	CALL	TRANS_7
-	MOV		PC,A
-MATCH4_2:
-	SNZ		T0AF
-	JMP		MATCH4_2
-	CLR		T0AF			;清除A比較器中斷旗標
-	JMP		SET_TIME_2
-TIME_SETTED:
+;==========================================	
+; 	歌曲
+;==========================================
+	CLR 	PCC.2
+	MOV		A,HIGH TAB_PITCH_A
+	MOV		TBHP,A
+	MOV		A,LOW TAB_PITCH_A
+	MOV		TBLP,A	
+NEXT_PITCH_A:
+	TABRD	PITCH
+	CLR		ACC
+	XOR		A,TBLH
+	SZ		Z
+	JMP		END_INT0
+	MOV		COUNT1,A
+	INC		TBLP
+LOOP_A:
+	MOV		A,10
+	MOV     COUNT2,A
+H1_A:
+	SET 	PC.2
+	MOV 	A,PITCH
+	CALL 	DELAY_BEEP
+	CLR		PC.2
+	MOV		A,PITCH
+	CALL	DELAY_BEEP
+	SDZ		COUNT2
+	JMP		H1_A
+	SDZ		COUNT1
+	JMP		LOOP_A
+	MOV 	A,30
+	MOV		COUNT1,A
+STOP_A:
+	CALL	DELAY_BEEP
+	SDZ		COUNT1
+	JMP 	STOP_A
+	JMP		NEXT_PITCH_A
+END_INT0:
+	CALL	CLEAR
+	CALL	CLEAR_LCM
 	MOV		A,STACK_DEL3	;DEL3變數回復
 	MOV		DEL3,A
 	MOV		A,STACK_DEL2	;DEL2變數回復
 	MOV		DEL2,A
 	MOV		A,STACK_DEL1	;DEL1變數回復
 	MOV		DEL1,A
-	MOV		A,STACK_PSW
+	MOV		A,STACK_PSW		;MCU狀態回復
 	MOV		STATUS,A
-	MOV		A,STACK_A
+	MOV		A,STACK_A		;累加器資料回復
 	CLR		INT0F
-	RETI		
-KY PROC
-	MOV 	A,11110000B		
-	MOV 	PDC,A			;規劃port_d高四位為輸入，低四位為輸出
-	MOV 	PDPU,A			;高四位接提升電阻
-	SET 	PD
-	CLR 	KEY
-	MOV 	A,04
-	MOV 	COUNT_KY,A
-	CLR 	C
-SCAN_KEY:
-	RLC 	PD
-	SET 	C
-	SNZ 	PD.4
-	JMP 	END_KEY
-	INC 	KEY
-	SNZ 	PD.5
-	JMP 	END_KEY
-	INC 	KEY
-	SNZ 	PD.6
-	JMP 	END_KEY
-	INC 	KEY
-	SNZ 	PD.7
-	JMP 	END_KEY
-	INC 	KEY
-	SDZ 	COUNT_KY
-	JMP 	SCAN_KEY
-END_KEY:
-	MOV		A,100
-	CALL 	DELAY	
-	RET
-KY ENDP
-	
-DELAY	PROC
-	MOV		DEL1,A
-DEL_1: 	
-	MOV		A,60
-	MOV		DEL2,A
-DEL_2:
-	MOV		A,110
+	RETI
+;===========================================
+;	中斷發生，撥放第2首歌曲
+;===========================================
+ISR_EXTINT1:
+	MOV		STACK_A,A		;累加器資料暫存
+	MOV		A,STATUS		
+	MOV		STACK_PSW,A		;MCU狀態暫存
+	MOV		A,DEL1			;DEL1變數暫存
+	MOV		STACK_DEL1,A
+	MOV		A,DEL2			;DEL2變數暫存
+	MOV		STACK_DEL2,A
+	MOV		A,DEL3			;DEL3變數暫存
+	MOV		STACK_DEL3,A
+;==========================================	
+; 	歌曲撥放
+;==========================================	
+	CLR 	PCC.2
+	MOV		A,HIGH TAB_PITCH_B
+	MOV		TBHP,A
+	MOV		A,LOW TAB_PITCH_B
+	MOV		TBLP,A
+NEXT_PITCH_B:
+	TABRD	PITCH
+	CLR		ACC
+	XOR		A,TBLH
+	SZ		Z
+	JMP		END_INT1
+	MOV		COUNT1,A
+	INC		TBLP
+LOOP_B:
+	MOV		A,10
+	MOV     COUNT2,A
+H1_B:
+	SET 	PC.2
+	MOV 	A,PITCH
+	CALL 	DELAY_BEEP
+	CLR		PC.2
+	MOV		A,PITCH
+	CALL	DELAY_BEEP
+	SDZ		COUNT2
+	JMP		H1_B
+	SDZ		COUNT1
+	JMP		LOOP_B
+	MOV 	A,30
+	MOV		COUNT1,A
+STOP_B:
+	CALL	DELAY_BEEP
+	SDZ		COUNT1
+	JMP 	STOP_B
+	JMP		NEXT_PITCH_B
+END_INT1:
+	MOV		A,STACK_DEL3	;DEL3變數回復
 	MOV		DEL3,A
-DEL_3:
-	SDZ		DEL3
-	JMP		DEL_3
-	SDZ		DEL2
-	JMP		DEL_2
-	SDZ		DEL1
-	JMP		DEL_1
-	RET
-DELAY	ENDP
-
-TRANS_7	PROC				;七段顯示器表格
-	ADDM	A,PCL		;PCL=PCL+Acc
-	RET  	A,3FH		;"0"
-	RET  	A,06H		;"1"
-	RET  	A,5BH		;"2"
-	RET  	A,4FH		;"3"
-	RET		A,66H		;"4"
-	RET		A,6DH		;"5"
-	RET		A,7DH		;"6"
-	RET		A,07H		;"7"
-	RET		A,7FH		;"8"
-	RET		A,67H		;"9"
-	RET		A,77H		;"A"
-	RET		A,7CH		;"b"
-	RET		A,58H		;"c"
-	RET		A,5EH		;"d"
-	RET		A,79H		;"E"
-	RET		A,71H		;"F"
-TRANS_7	ENDP
-
-BEEP	PROC
-	MOV		A,100
-	MOV		COUNT_BEEP,A
-BB:
-	SET		PG.0
-	MOV		A,ADRH
-	XOR		A,0FFH
+	MOV		A,STACK_DEL2	;DEL2變數回復
+	MOV		DEL2,A
+	MOV		A,STACK_DEL1	;DEL1變數回復
+	MOV		DEL1,A
+	MOV		A,STACK_PSW		;MCU狀態回復
+	MOV		STATUS,A
+	MOV		A,STACK_A		;累加器資料回復
+	CLR		INT1F
+	RETI
+;===========================================
+;	中斷發生，撥放第3首歌曲
+;===========================================	
+ISR_EXTINT2:
+	MOV		STACK_A,A		;累加器資料暫存
+	MOV		A,STATUS		
+	MOV		STACK_PSW,A		;MCU狀態暫存
+	MOV		A,DEL1			;DEL1變數暫存
+	MOV		STACK_DEL1,A
+	MOV		A,DEL2			;DEL2變數暫存
+	MOV		STACK_DEL2,A
+	MOV		A,DEL3			;DEL3變數暫存
+	MOV		STACK_DEL3,A
+;==========================================	
+; 	歌曲撥放
+;==========================================	
+	CLR 	PCC.2
+	MOV		A,HIGH TAB_PITCH_C
+	MOV		TBHP,A
+	MOV		A,LOW TAB_PITCH_C
+	MOV		TBLP,A
+NEXT_PITCH_C:
+	TABRD	PITCH
+	CLR		ACC
+	XOR		A,TBLH
+	SZ		Z
+	JMP		END_INT2
+	MOV		COUNT1,A
+	INC		TBLP
+LOOP_C:
+	MOV		A,8
+	MOV     COUNT2,A
+H1_C:
+	SET 	PC.2
+	MOV 	A,PITCH
+	CALL 	DELAY_BEEP
+	CLR		PC.2
+	MOV		A,PITCH
 	CALL	DELAY_BEEP
-	CLR		PG.0
-	MOV		A,ADRH
-	XOR		A,0FFH
+	SDZ		COUNT2
+	JMP		H1_C
+	SDZ		COUNT1
+	JMP		LOOP_C
+	MOV 	A,20
+	MOV		COUNT1,A
+STOP_C:
 	CALL	DELAY_BEEP
-	SDZ		COUNT_BEEP
-	JMP		BB
-BEEP	ENDP
-DELAY_BEEP PROC
-	MOV		DELB,A
-DELB_1:
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	SDZ		DELB
-	JMP		DELB_1
+	SDZ		COUNT1
+	JMP 	STOP_C
+	JMP		NEXT_PITCH_C
+END_INT2:
+	MOV		A,STACK_DEL3	;DEL3變數回復
+	MOV		DEL3,A
+	MOV		A,STACK_DEL2	;DEL2變數回復
+	MOV		DEL2,A
+	MOV		A,STACK_DEL1	;DEL1變數回復
+	MOV		DEL1,A
+	MOV		A,STACK_PSW		;MCU狀態回復
+	MOV		STATUS,A
+	MOV		A,STACK_A		;累加器資料回復
+	CLR		INT2F
+	RETI
+;===========================================
+;	中斷發生，撥放第4首歌曲
+;===========================================	
+ISR_EXTINT3:
+	MOV		STACK_A,A		;累加器資料暫存
+	MOV		A,STATUS		
+	MOV		STACK_PSW,A		;MCU狀態暫存
+	MOV		A,DEL1			;DEL1變數暫存
+	MOV		STACK_DEL1,A
+	MOV		A,DEL2			;DEL2變數暫存
+	MOV		STACK_DEL2,A
+	MOV		A,DEL3			;DEL3變數暫存
+	MOV		STACK_DEL3,A
+;==========================================	
+; 	歌曲撥放
+;==========================================	
+	CLR 	PCC.2
+	MOV		A,HIGH TAB_PITCH_D
+	MOV		TBHP,A
+	MOV		A,LOW TAB_PITCH_D
+	MOV		TBLP,A
+NEXT_PITCH_D:
+	TABRD	PITCH
+	CLR		ACC
+	XOR		A,TBLH
+	SZ		Z
+	JMP		END_INT3
+	MOV		COUNT1,A
+	INC		TBLP
+LOOP_D:
+	MOV		A,8
+	MOV     COUNT2,A
+H1_D:
+	SET 	PC.2
+	MOV 	A,PITCH
+	CALL 	DELAY_BEEP
+	CLR		PC.2
+	MOV		A,PITCH
+	CALL	DELAY_BEEP
+	SDZ		COUNT2
+	JMP		H1_D
+	SDZ		COUNT1
+	JMP		LOOP_D
+	MOV 	A,20
+	MOV		COUNT1,A
+STOP_D:
+	CALL	DELAY_BEEP
+	SDZ		COUNT1
+	JMP 	STOP_D
+	JMP		NEXT_PITCH_D
+END_INT3:
+	MOV		A,STACK_DEL3	;DEL3變數回復
+	MOV		DEL3,A
+	MOV		A,STACK_DEL2	;DEL2變數回復
+	MOV		DEL2,A
+	MOV		A,STACK_DEL1	;DEL1變數回復
+	MOV		DEL1,A
+	MOV		A,STACK_PSW		;MCU狀態回復
+	MOV		STATUS,A
+	MOV		A,STACK_A		;累加器資料回復
+	CLR		INT3F
+	RETI
+INIT_LCM	PROC
+	CLR		LCM_EN
+	CLR		LCM_RW
+	CLR		LCM_RS
+	CLR		LCM_ENC
+	CLR		LCM_RWC
+	CLR		LCM_RSC
+	CALL	DELAY
+	MOV		A,38H
+	CALL	WLCMC
+	MOV		A,0FH
+	CALL	WLCMC
+	MOV		A,06H
+	CALL	WLCMC
+	MOV		A,01H
+	CALL	WLCMC
 	RET
+INIT_LCM 	ENDP
+
+WLCMD		PROC
+	SET		DC_FLAG
+	JMP		$+3
+WLCMC:	
+	CLR		DC_FLAG
+	SET		LCM_DATAPORTC
+	CLR		LCM_RS
+	SET		LCM_RW
+	NOP
+	CALL	WAIT
+	SET		LCM_EN
+	NOP
+	CALL	WAIT
+WF:	
+	SZ		LCM_DATAPORT.7
+;	JMP		WF
+	CLR		LCM_EN
+	CLR		LCM_DATAPORTC
+	MOV		LCM_DATAPORT,A
+	CLR		LCM_RW
+	CLR		LCM_RS
+	SZ		DC_FLAG
+	SET		LCM_RS
+	SET		LCM_EN
+	NOP
+	CALL	WAIT
+	CLR		LCM_EN
+	RET
+WLCMD		ENDP
+
+CLEAR		PROC
+	CLR		DATA
+	CLR		TBHP
+	CLR		TBLP
+	CLR		COUNT1
+	CLR		COUNT2
+CLEAR		ENDP
+
+CLEAR_LCM		PROC
+	MOV		A,80H
+	CALL	WLCMC
+	CALL	DELAY
+	MOV		A,0FH
+	MOV		LINE_COUNT,A
+CLEAR_LCM_1:
+	MOV		A,20H
+	CALL	WLCMD
+	CALL	DELAY_BEEP
+	SDZ		LINE_COUNT
+	JMP		CLEAR_LCM_1
+	MOV		A,0C0H
+	CALL	WLCMC
+	CALL	DELAY
+	MOV		A,0FH
+	MOV		LINE_COUNT,A
+CLEAR_LCM_2:
+	MOV		A,20H
+	CALL	WLCMD
+	CALL	DELAY
+	SDZ		LINE_COUNT
+	JMP		CLEAR_LCM_2
+	MOV		A,80H
+	CALL	WLCMC
+	CALL	DELAY_BEEP
+	RET
+CLEAR_LCM		ENDP
+
+DELAY_BEEP 	PROC
+		MOV		DELA,A
+DEL_A:	NOP
+		NOP
+		NOP
+		NOP
+		NOP
+		NOP
+		NOP
+		SDZ		DELA
+		JMP		DEL_A
+		RET
 DELAY_BEEP ENDP
 
-		END
+DELAY   	PROC
+	MOV		A,2
+    MOV     DEL1,A
+DEL_1:  
+	MOV     A,30
+    MOV     DEL2,A
+DEL_2:
+    MOV     A,110
+    MOV     DEL3,A
+DEL_3:
+    SDZ     DEL3
+    JMP     DEL_3
+    SDZ     DEL2
+    JMP     DEL_2
+    SDZ     DEL1
+    JMP     DEL_1
+    RET
+DELAY   	ENDP
+WAIT		PROC
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	RET
+WAIT		ENDP
+
+TAB_DATA_1:
+	DC		57H		;"W"
+	DC		61H		;"a"
+	DC		69H		;"i"
+	DC		74H		;"t"
+	DC		69H		;"i"
+	DC		6EH		;"n"
+	DC		67H		;"g"
+	DC		20H		;" "
+	DC		66H		;"f"
+	DC		6FH		;"o"
+	DC		72H		;"r"
+	DC		20H		;" "
+	DC		73H		;"s"
+	DC		77H		;"w"
+	DC		69H		;"i"
+	DC		74H		;"t"
+	DC		63H		;"c“
+	DC		68H		;"h“
+	DC		20H		;" “
+	DC		6FH		;"o“
+	DC		6EH		;"n“
+TAB_DATA_2:
+	DC		57H		;"M"
+	DC		61H		;"a"
+	DC		74H		;"r"
+	DC		69H		;"y"
+	DC		6EH		;" "
+	DC		67H		;"h"
+	DC		20H		;"a"
+	DC		66H		;"d"
+	DC		6FH		;" "
+	DC		72H		;"a"
+	DC		20H		;" "
+	DC		73H		;"s"
+	DC		77H		;"m"
+	DC		69H		;"a"
+	DC		74H		;"l"
+	DC		63H		;"l“
+	DC		68H		;" “
+	DC		20H		;"l“
+	DC		6FH		;"i“
+	DC		6EH		;"t“
+	DC		6EH		;"t“
+	DC		6EH		;"l“
+	DC		6EH		;"e“
+	DC		6EH		;" “
+	DC		6EH		;"l“
+	DC		6EH		;"a“
+	DC		6EH		;"m“
+	DC		6EH		;"b“
+TAB_DATA_3:
+	DC		57H		;"F"
+	DC		61H		;"a"
+	DC		74H		;"m"
+	DC		69H		;"i"
+	DC		6EH		;"l"
+	DC		67H		;"y"
+	DC		20H		;""
+	DC		66H		;"M"
+	DC		6FH		;"a"
+	DC		72H		;"r"
+	DC		20H		;"t"
+TAB_PITCH_A:									;綿羊
+	DC	200000/(1318*2)+(1318/(2*10)) 	SHL 8  	;MI. 3.
+	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
+	DC	200000/(523*2)+(523/(2*10)) 	SHL 8  	;DO 1
+	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(10)) 		SHL 8  	;MI 3
+	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
+	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
+	DC	200000/(587*2)+(587/(10)) 		SHL 8  	;RE 2
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(785*2)+(785/(10)) 		SHL 8  	;SO 5
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI	3
+	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
+	DC	200000/(523*2)+(523/(2*10)) 	SHL 8  	;DO 1
+	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(10)) 		SHL 8  	;MI 3
+	DC	200000/(523*2)+(523/(2*10)) 	SHL 8  	;DO 1
+	DC	200000/(587*2)+(587/(4*10)) 	SHL 8  	;RE 2
+	DC	200000/(587*2)+(587/(4*10)) 	SHL 8  	;RE 2
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
+	DC	200000/(523*2)+(523/(5)) 		SHL 8  	;DO 1
+	DC 	0
+TAB_PITCH_B:									;全家
+	DC	200000/(1318*2)+(1318/(2*10)) 	SHL 8  	;MI. 3.
+	DC	200000/(1047*2)+(1047/(2*10)) 	SHL 8  	;DO. 1.
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(1047*2)+(1047/(2*10)) 	SHL 8  	;DO. 1.
+	DC	200000/(1174*2)+(1174/(2*10)) 	SHL 8  	;RE. 2.
+	DC	200000/(1570*2)+(1570/(10)) 	SHL 8  	;SO. 5.
+	DC	200000/(1174*2)+(1174/(2*10)) 	SHL 8  	;RE. 2.
+	DC	200000/(1318*2)+(1318/(2*10)) 	SHL 8  	;MI. 3.
+	DC	200000/(1174*2)+(1174/(2*10)) 	SHL 8  	;RE. 2.
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(1047*2)+(1047/(2*10)) 	SHL 8  	;DO. 1.
+	DC 	0
+TAB_PITCH_C:
+	DC	200000/(523*2)+(523/(2*10)) 	SHL 8  	;DO 1
+	DC	200000/(523*2)+(523/(2*10)) 	SHL 8  	;DO 1
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(880*2)+(880/(2*10)) 	SHL 8  	;LA 6
+	DC	200000/(880*2)+(880/(2*10)) 	SHL 8  	;LA 6
+	DC	200000/(785*2)+(785/(10)) 	SHL 8  	;SO 5
+	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
+	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
+	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
+	DC	200000/(523*2)+(523/(10)) 	SHL 8  	;DO 1
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
+	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(587*2)+(587/(10)) 	SHL 8  	;RE 2
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
+	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(587*2)+(587/(10)) 	SHL 8  	;RE 2
+	DC	200000/(523*2)+(523/(2*10)) 	SHL 8  	;DO 1
+	DC	200000/(523*2)+(523/(2*10)) 	SHL 8  	;DO 1
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(880*2)+(880/(2*10)) 	SHL 8  	;LA 6
+	DC	200000/(880*2)+(880/(2*10)) 	SHL 8  	;LA 6
+	DC	200000/(785*2)+(785/(10)) 	SHL 8  	;SO 5
+	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
+	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
+	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
+	DC	200000/(523*2)+(523/(10)) 	SHL 8  	;DO 1
+	DC	0
+TAB_PITCH_D:
+	DC	200000/(880*2)+(880/(2*10)) 	SHL 8  	;LA 6
+	DC	200000/(1760*2)+(1760/(4*10)) 	SHL 8  	;LA. 6.
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(659*2)+(659/(4*10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(4*10)) 	SHL 8  	;MI 3
+	DC	200000/(587*2)+(587/(4*10)) 	SHL 8  	;RE 2
+	DC	200000/(659*2)+(659/(10)) 	SHL 8  	;MI 3
+	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
+	DC	200000/(1174*2)+(1174/(4*10)) 	SHL 8  	;RE. 2.
+	DC	200000/(523*2)+(523/(4*10)) 	SHL 8  	;DO 1
+	DC	200000/(587*2)+(587/(4*10)) 	SHL 8  	;RE 2
+	DC	200000/(587*2)+(587/(4*10)) 	SHL 8  	;RE 2
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(659*2)+(659/(4*10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(4*10)) 	SHL 8  	;MI 3
+	DC	200000/(587*2)+(587/(4*10)) 	SHL 8  	;RE 2
+	DC	200000/(659*2)+(659/(10)) 	SHL 8  	;MI 3
+	DC	200000/(880*2)+(880/(2*10)) 	SHL 8  	;LA 6
+	DC	200000/(1760*2)+(1760/(4*10)) 	SHL 8  	;LA. 6.
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(698*2)+(698/(4*10)) 	SHL 8  	;FA 4
+	DC	200000/(698*2)+(698/(4*10)) 	SHL 8  	;FA 4
+	DC	200000/(659*2)+(659/(4*10)) 	SHL 8  	;MI 3
+	DC	200000/(587*2)+(587/(4*10)) 	SHL 8  	;RE 2
+	DC	200000/(659*2)+(659/(10)) 	SHL 8  	;MI 3
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(1570*2)+(1570/(4*10)) 	SHL 8  	;SO. 5.
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(988*2)+(988/(2*10)) 	SHL 8  	;SI 7
+	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
+	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
+	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(880*2)+(880/(10)) 	SHL 8  	;LA 6
+	DC	200000/(1047*2)+(1047/(2*10)) 	SHL 8  	;DO. 1.
+	DC	200000/(1047*2)+(1047/(4*10)) 	SHL 8  	;DO. 1.
+	DC	200000/(1047*2)+(1047/(4*10)) 	SHL 8  	;DO. 1.
+	DC	200000/(988*2)+(988/(2*10)) 	SHL 8  	;SI 7
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
+	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
+	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(1760*2)+(1760/(4*10)) 	SHL 8  	;LA. 6.
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
+	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
+	DC	200000/(1570*2)+(1570/(4*10)) 	SHL 8  	;SO. 5.
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(988*2)+(988/(2*10)) 	SHL 8  	;SI 7
+	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
+	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
+	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
+	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
+	DC	200000/(880*2)+(880/(10)) 	SHL 8  	;LA 6
+	DC	0
+END	
+	
+	
