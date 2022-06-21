@@ -67,7 +67,6 @@ INIT:
 	SET		PCC.5
 	SET		INT3E
 	SET		EMI
-
 MAIN:	
 	MOV		A,HIGH TAB_DATA
 	MOV		TBHP,A
@@ -121,7 +120,51 @@ ISR_EXTINT0:
 	MOV		STACK_TBHP,A
 	MOV		A,TBLP
 	MOV		STACK_TBLP,A
-	
+	MOV		A,LINE_COUNT
+	MOV		STACK_LINE_COUNT,A
+	MOV		A,DATA
+	MOV		STACK_DATA,A	
+MAIN_INT0:
+	CLR		TBHP	
+	CLR		TBLP
+	CLR		DATA
+	CLR		LINE_COUNT	
+	MOV		A,HIGH TAB2_DATA
+	MOV		TBHP,A
+	MOV		A,LOW TAB2_DATA
+	MOV		TBLP,A
+	MOV		A,01H			;清除顯示區
+	CALL	WLCMC
+	CALL	DELAY
+	MOV		A,80H			;設定顯示第一列，位置0
+	CALL	WLCMC
+	CALL	DELAY
+	MOV		A,0EH
+	MOV		LINE_COUNT,A	;設定每列字數
+MAIN_INT0_1:
+	TABRD	DATA
+	MOV		A,DATA			;寫入顯示資料
+	CALL	WLCMD
+	CALL	DELAY
+	INC		TBLP
+	SDZ		LINE_COUNT		;可顯示字數是否為0?
+	JMP		MAIN_INT0_1			;不是0，繼續顯示下個字
+	MOV		A,0C0H			;設定顯示第二列，位置0
+	CALL	WLCMC
+	CALL	DELAY
+	MOV		A,0EH
+	MOV		LINE_COUNT,A	;設定每列字數
+MAIN_INT0_2:
+	TABRD	DATA
+	MOV		A,DATA			;寫入顯示資料
+	CALL	WLCMD
+	CALL	DELAY
+	INC		TBLP
+	SDZ		LINE_COUNT		;可顯示字數是否為0?
+	JMP		MAIN_INT0_2			;不是0，繼續顯示下個字
+;==========================================	
+; 	歌曲
+;==========================================	
 	CLR 	PCC.2
 	MOV		A,HIGH TAB_PITCH_A
 	MOV		TBHP,A
@@ -157,6 +200,10 @@ STOP_A:
 	JMP 	STOP_A
 	JMP		NEXT_PITCH_A
 END_INT0:
+	MOV		A,STACK_DATA
+	MOV		DATA,A
+	MOV		A,STACK_LINE_COUNT
+	MOV		LINE_COUNT,A
 	MOV		A,STACK_TBHP
 	MOV		TBHP,A
 	MOV		A,STACK_TBLP
@@ -189,7 +236,9 @@ ISR_EXTINT1:
 	MOV		STACK_TBHP,A
 	MOV		A,TBLP
 	MOV		STACK_TBLP,A
-
+;==========================================	
+; 	歌曲
+;==========================================	
 	CLR 	PCC.2
 	MOV		A,HIGH TAB_PITCH_B
 	MOV		TBHP,A
@@ -383,7 +432,19 @@ TAB2_DATA:
 	DC		6EH		;"a“
 	DC		6EH		;"m“
 	DC		6EH		;"b“
-TAB_PITCH_A:							;綿羊
+TAB3_DATA:
+	DC		57H		;"F"
+	DC		61H		;"a"
+	DC		74H		;"m"
+	DC		69H		;"i"
+	DC		6EH		;"l"
+	DC		67H		;"y"
+	DC		20H		;""
+	DC		66H		;"M"
+	DC		6FH		;"a"
+	DC		72H		;"r"
+	DC		20H		;"t"
+TAB_PITCH_A:									;綿羊
 	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI	3
 	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
 	DC	200000/(523*2)+(523/(2*10)) 	SHL 8  	;DO 1
@@ -411,7 +472,7 @@ TAB_PITCH_A:							;綿羊
 	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
 	DC	200000/(523*2)+(523/(10)) 		SHL 8  	;DO 1
 	DC 	0
-TAB_PITCH_B:							;綿羊
+TAB_PITCH_B:									;全家
 	DC	200000/(1318*2)+(1318/(2*10)) 	SHL 8  	;MI. 3.
 	DC	200000/(1047*2)+(1047/(2*10)) 	SHL 8  	;DO. 1.
 	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
