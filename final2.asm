@@ -1,139 +1,368 @@
 include HT66F70A.inc
-
+;====================================================
 ds  .section    'data'
-TIME_A	DB	?	;分	十位數
-TIME_B	DB	?	;分	個位數
-TIME_C	DB	?	;秒 十位數
-TIME_D	DB	?	;秒 個位數
-DEL1	DB		?
-DEL2	DB		?
-DEL3	DB		?
-INDEX	DB		?
+TIME_A		DB		?	;分	十位數
+TIME_B		DB		?	;分	個位數
+TIME_C		DB		?	;秒 十位數
+TIME_D		DB		?	;秒 個位數
+DEL1		DB		?	;延遲副程式變數
+DEL2		DB		?	;延遲副程式變數
+DEL3		DB		?	;延遲副程式變數
+DELB		DB		?
+COUNT_A		DB		?	;表格計數
+COUNT_B		DB		?	;表格計數
+COUNT_C		DB		?	;表格計數
+COUNT_D		DB		?	;表格計數
+COUNT_KY	DB		?	;鍵盤計數
+COUNT_BEEP	DB		?
+KEY 		DB 		?
+STACK_A		DB		?
+STACK_PSW	DB		?
+STACK_DEL1 	DB		?
+STACK_DEL2 	DB		?
+STACK_DEL3 	DB		?	
+;====================================================
 
 ROMBANK 0 cs
 cs  .section    at  000h    'code'
 
-        ORG     00H             ;程式起始位置
-MAIN:                           ;"MAIN:"代表label
-        CLR     PCC             ;規劃PORT_C為輸出，輸出/入控制暫存器，1輸入；0輸出
-        CLR		PDC
-		MOV     A,10101111B
-        MOV     WDTC,A          ;關閉看門狗計時器
-		MOV		A,00100000B		;CTM控制暫存器0,CLK=fH(fsys/16=500KHz)
-		MOV		TM0C0,A			
-		MOV		A,00000000B		;CTM控制暫存器1,Compare Match Output Mode
-		MOV		TM0C1,A			;CCLR=1,設定使用A比較器
-		MOV		A,0FFH			;設定計數比較值=03FFH
-		MOV		TM0AL,A			
-		MOV		A,03H
-		MOV		TM0AH,A
-		SET		T0ON			;開始計數
-		MOV		A,5
-		MOV		TIME_A,A
-		MOV		TIME_B,A
-		MOV		TIME_C,A
-		MOV		TIME_D,A
+	ORG     00H             ;程式起始位置
+	JMP		INIT
+	ORG		04H
+	JMP		ISR_EXTINT0
+INIT:                           
+	CLR     PCC             ;七段顯示器輸出
+	CLR		PDC				;七段顯示器掃描輸出
+	CLR		PEC
+	CLR 	PGC.0
+	MOV     A,10101111B
+	MOV     WDTC,A          ;關閉看門狗計時器
+	MOV		A,00010000B		;CTM控制暫存器0,CLK=fH(fsys/16=500KHz)
+	MOV		TM0C0,A			
+	MOV		A,00000000B		;CTM控制暫存器1,Compare Match Output Mode
+	MOV		TM0C1,A			;CCLR=1,設定使用A比較器
+	MOV		A,0FFH			;設定計數比較值=03FFH
+	MOV		TM0AL,A			
+	MOV		A,03H
+	MOV		TM0AH,A
+	MOV		A,00000011B
+	SET		PAPU.3
+	SET		PAC.3
+	MOV		INTEG,A
+	SET		INT0E
+	SET		EMI
+	
+	MOV		A,5				;測試用，設定初值
+	;MOV		TIME_A,A
+	;MOV		TIME_B,A
+	MOV		TIME_D,A
+	CLR		TIME_A
+	CLR		TIME_B
+	CLR		TIME_C
+	MOV		A,TIME_A		;COUNT=TIME_D+1，目的為避免系統進入TRANS_7的ADDM，無法跳脫出來
+	ADD		A,1
+	MOV		COUNT_A,A
+	MOV		A,TIME_B		;COUNT=TIME_D+1，目的為避免系統進入TRANS_7的ADDM，無法跳脫出來
+	ADD		A,1
+	MOV		COUNT_B,A
+	MOV		A,TIME_C		;COUNT=TIME_D+1，目的為避免系統進入TRANS_7的ADDM，無法跳脫出來
+	ADD		A,1
+	MOV		COUNT_C,A
+	MOV		A,TIME_D		;COUNT=TIME_D+1，目的為避免系統進入TRANS_7的ADDM，無法跳脫出來
+	ADD		A,1
+	MOV		COUNT_D,A
+	
+	SET		T0ON			;開始計數
 TIMER:
-		MOV		A,100
-		CALL	DELAY
-		DEC		TIME_D
-		SNZ		TIME_D
-		JMP		INIT_TIME_D
-		JMP		LIGHT
-INIT_TIME_A:
-		MOV		A,5
-		MOV		TIME_A,A
+	MOV		A,100
+	CALL	DELAY
+	DEC		TIME_D
+	SDZ		COUNT_D
+	JMP		LIGHT
+	JMP		INIT_TIME_D
+TIME_OUT:
+	SNZ		COUNT_A
+	JMP		TIMER
+	SNZ		COUNT_B
+	JMP		TIMER
+	SNZ		COUNT_C
+	JMP		TIMER
+	SNZ		COUNT_D
+	JMP		TIMER
+	CALL	BEEP
+	JMP		TIME_OUT
 INIT_TIME_B:
-		MOV		A,9
-		MOV		TIME_B,A
-		DEC		TIME_A
-		SNZ		TIME_A
-		JMP		INIT_TIME_A
-		JMP		TIMER
+	MOV		A,9
+	MOV		TIME_B,A
+	DEC		TIME_A
+	SDZ		COUNT_A
+	JMP		TIMER
+	JMP		TIME_OUT
 INIT_TIME_C:
-		MOV		A,5
-		MOV		TIME_C,A
-		DEC		TIME_C
-		SNZ		TIME_C
-		JMP		INIT_TIME_B
-		JMP		TIMER
+	MOV		A,5
+	MOV		TIME_C,A
+	DEC		TIME_B
+	SDZ		COUNT_B
+	JMP		TIMER
+	JMP		INIT_TIME_B
 INIT_TIME_D:
-		MOV		A,9
-		MOV		TIME_D,A
-		DEC		TIME_C
-		SNZ		TIME_C
-		JMP		INIT_TIME_C
-		JMP		TIMER					
+	MOV		A,9
+	MOV		TIME_D,A
+	MOV		A,10
+	MOV		COUNT,A
+	DEC		TIME_C
+	SDZ		COUNT_C
+	JMP		TIMER					
+	JMP		INIT_TIME_C
 LIGHT:
-		MOV		A,01H			;點亮第一顆顯示器
-		MOV		PD,A
-		MOV		A,TIME_D			;送出點亮數字
-		CALL	TRANS_7
-		MOV		PC,A
-		MOV		A,5				;設定點亮時間
-		CALL	DELAY
-		
-		MOV		A,02H			;點亮第二顆顯示器
-		MOV		PD,A
-		MOV		A,TIME_C			;送出點亮數字
-		CALL	TRANS_7
-		MOV		PC,A
-		MOV		A,5				;設定點亮時間
-		CALL	DELAY
-		
-		MOV		A,04H			;點亮第三顆顯示器
-		MOV		PD,A
-		MOV		A,TIME_B			;送出點亮數字
-		CALL	TRANS_7
-		MOV		PC,A
-		MOV		A,5				;設定點亮時間
-		CALL	DELAY
-		
-		MOV		A,08H			;點亮第四顆顯示器
-		MOV		PD,A	
-		MOV		A,TIME_A			;送出點亮數字
-		CALL	TRANS_7
-		MOV		PC,A
-		MOV		A,5				;設定點亮時間
-		CALL	DELAY
-		
-		JMP		TIMER
-
+	CLR		T0AF			;清除A比較器中斷旗標
+	MOV		A,01H			;點亮第一顆顯示器
+	MOV		PD,A
+	MOV		A,TIME_D			;送出點亮數字
+	CALL	TRANS_7
+	MOV		PC,A
+MATCH1:
+	SNZ		T0AF			;SNZ: 不是0就跳
+	JMP		MATCH1
+	CLR		T0AF			;清除A比較器中斷旗標
+	
+	MOV		A,02H			;點亮第二顆顯示器
+	MOV		PD,A
+	MOV		A,TIME_C			;送出點亮數字
+	CALL	TRANS_7
+	MOV		PC,A
+MATCH2:
+	SNZ		T0AF
+	JMP		MATCH2
+	CLR		T0AF			;清除A比較器中斷旗標
+	
+	MOV		A,04H			;點亮第三顆顯示器
+	MOV		PD,A
+	MOV		A,TIME_B			;送出點亮數字
+	CALL	TRANS_7
+	MOV		PC,A
+MATCH3:
+	SNZ		T0AF
+	JMP		MATCH3
+	CLR		T0AF			;清除A比較器中斷旗標
+	
+	MOV		A,08H			;點亮第四顆顯示器
+	MOV		PD,A	
+	MOV		A,TIME_A		;送出點亮數字
+	CALL	TRANS_7
+	MOV		PC,A
+MATCH4:
+	SNZ		T0AF
+	JMP		MATCH4
+	CLR		T0AF			;清除A比較器中斷旗標
+	JMP		TIMER
+	
+;=================發生中斷=======================
+ISR_EXTINT0:
+	MOV		STACK_A,A		;累加器資料暫存
+	MOV		A,STATUS		
+	MOV		STACK_PSW,A		;MCU狀態暫存
+	MOV		A,DEL1			;DEL1變數暫存
+	MOV		STACK_DEL1,A
+	MOV		A,DEL2			;DEL2變數暫存
+	MOV		STACK_DEL2,A
+	MOV		A,DEL3			;DEL3變數暫存
+	MOV		STACK_DEL3,A
+SET_TIME:
+	CLR		TIME_A
+	CLR		TIME_B
+	CLR		TIME_C
+	CLR		TIME_D
+	MOV		A,TIME_D		;COUNT=TIME_D+1，目的為避免系統進入TRANS_7的ADDM，無法跳脫出來
+	ADD		A,1
+	MOV		COUNT,A
+	JMP		LIGHT_2
+SET_TIME_2:	
+	CALL 	KY				;呼叫鍵盤掃描副程式
+	MOV 	A,16
+	XOR 	A,KEY
+	SZ 		Z				;按鍵沒有被按下
+	JMP 	SET_TIME		;再次掃描鍵盤
+	SNZ		TIME_A
+	JMP		SET_TIME_A
+	SNZ		TIME_B
+	JMP		SET_TIME_B
+	SNZ		TIME_C
+	JMP		SET_TIME_C
+	SNZ		TIME_D
+	JMP		SET_TIME_D	
+	JMP		TIME_SETTED
+SET_TIME_A:
+	MOV 	A,KEY
+	MOV		TIME_A,A
+	JMP		SET_TIME
+SET_TIME_B:
+	MOV 	A,KEY
+	MOV		TIME_B,A
+	JMP		SET_TIME
+SET_TIME_C:
+	MOV 	A,KEY
+	MOV		TIME_C,A
+	JMP		SET_TIME
+SET_TIME_D:
+	MOV 	A,KEY
+	MOV		TIME_D,A
+	MOV		A,TIME_D		;COUNT=TIME_D+1，目的為避免系統進入TRANS_7的ADDM，無法跳脫出來
+	ADD		A,1
+	MOV		COUNT,A
+	JMP		SET_TIME
+LIGHT_2:
+	CLR		T0AF			;清除A比較器中斷旗標
+	MOV		A,01H			;點亮第一顆顯示器
+	MOV		PD,A
+	MOV		A,TIME_D			;送出點亮數字
+	CALL	TRANS_7
+	MOV		PC,A
+MATCH1_2:
+	SNZ		T0AF			;SNZ: 不是0就跳
+	JMP		MATCH1_2
+	CLR		T0AF			;清除A比較器中斷旗標
+	
+	MOV		A,02H			;點亮第二顆顯示器
+	MOV		PD,A
+	MOV		A,TIME_C			;送出點亮數字
+	CALL	TRANS_7
+	MOV		PC,A
+MATCH2_2:
+	SNZ		T0AF
+	JMP		MATCH2_2
+	CLR		T0AF			;清除A比較器中斷旗標
+	
+	MOV		A,04H			;點亮第三顆顯示器
+	MOV		PD,A
+	MOV		A,TIME_B			;送出點亮數字
+	CALL	TRANS_7
+	MOV		PC,A
+MATCH3_2:
+	SNZ		T0AF
+	JMP		MATCH3_2
+	CLR		T0AF			;清除A比較器中斷旗標
+	
+	MOV		A,08H			;點亮第四顆顯示器
+	MOV		PD,A	
+	MOV		A,TIME_A		;送出點亮數字
+	CALL	TRANS_7
+	MOV		PC,A
+MATCH4_2:
+	SNZ		T0AF
+	JMP		MATCH4_2
+	CLR		T0AF			;清除A比較器中斷旗標
+	JMP		SET_TIME_2
+TIME_SETTED:
+	MOV		A,STACK_DEL3	;DEL3變數回復
+	MOV		DEL3,A
+	MOV		A,STACK_DEL2	;DEL2變數回復
+	MOV		DEL2,A
+	MOV		A,STACK_DEL1	;DEL1變數回復
+	MOV		DEL1,A
+	MOV		A,STACK_PSW
+	MOV		STATUS,A
+	MOV		A,STACK_A
+	CLR		INT0F
+	RETI		
+KY PROC
+	MOV 	A,11110000B		
+	MOV 	PDC,A			;規劃port_d高四位為輸入，低四位為輸出
+	MOV 	PDPU,A			;高四位接提升電阻
+	SET 	PD
+	CLR 	KEY
+	MOV 	A,04
+	MOV 	COUNT_KY,A
+	CLR 	C
+SCAN_KEY:
+	RLC 	PD
+	SET 	C
+	SNZ 	PD.4
+	JMP 	END_KEY
+	INC 	KEY
+	SNZ 	PD.5
+	JMP 	END_KEY
+	INC 	KEY
+	SNZ 	PD.6
+	JMP 	END_KEY
+	INC 	KEY
+	SNZ 	PD.7
+	JMP 	END_KEY
+	INC 	KEY
+	SDZ 	COUNT_KY
+	JMP 	SCAN_KEY
+END_KEY:
+	MOV		A,100
+	CALL 	DELAY	
+	RET
+KY ENDP
+	
 DELAY	PROC
-		MOV		DEL1,A
-DEL_1: 	MOV		A,60
-		MOV		DEL2,A
+	MOV		DEL1,A
+DEL_1: 	
+	MOV		A,60
+	MOV		DEL2,A
 DEL_2:
-		MOV		A,110
-		MOV		DEL3,A
+	MOV		A,110
+	MOV		DEL3,A
 DEL_3:
-		SDZ		DEL3
-		JMP		DEL_3
-		SDZ		DEL2
-		JMP		DEL_2
-		SDZ		DEL1
-		JMP		DEL_1
-		RET
+	SDZ		DEL3
+	JMP		DEL_3
+	SDZ		DEL2
+	JMP		DEL_2
+	SDZ		DEL1
+	JMP		DEL_1
+	RET
 DELAY	ENDP
 
 TRANS_7	PROC				;七段顯示器表格
-	ADDM		A,PCL		;PCL=PCL+Acc
-	RET  		A,3FH		;"0"
-	RET  		A,06H		;"1"
-	RET  		A,5BH		;"2"
-	RET  		A,4FH		;"3"
-	RET			A,66H		;"4"
-	RET			A,6DH		;"5"
-	RET			A,7DH		;"6"
-	RET			A,07H		;"7"
-	RET			A,7FH		;"8"
-	RET			A,67H		;"9"
-	RET			A,77H		;"A"
-	RET			A,7CH		;"b"
-	RET			A,58H		;"c"
-	RET			A,5EH		;"d"
-	RET			A,79H		;"E"
-	RET			A,71H		;"F"
+	ADDM	A,PCL		;PCL=PCL+Acc
+	RET  	A,3FH		;"0"
+	RET  	A,06H		;"1"
+	RET  	A,5BH		;"2"
+	RET  	A,4FH		;"3"
+	RET		A,66H		;"4"
+	RET		A,6DH		;"5"
+	RET		A,7DH		;"6"
+	RET		A,07H		;"7"
+	RET		A,7FH		;"8"
+	RET		A,67H		;"9"
+	RET		A,77H		;"A"
+	RET		A,7CH		;"b"
+	RET		A,58H		;"c"
+	RET		A,5EH		;"d"
+	RET		A,79H		;"E"
+	RET		A,71H		;"F"
 TRANS_7	ENDP
+
+BEEP	PROC
+	MOV		A,100
+	MOV		COUNT_BEEP,A
+BB:
+	SET		PG.0
+	MOV		A,ADRH
+	XOR		A,0FFH
+	CALL	DELAY_BEEP
+	CLR		PG.0
+	MOV		A,ADRH
+	XOR		A,0FFH
+	CALL	DELAY_BEEP
+	SDZ		COUNT_BEEP
+	JMP		BB
+BEEP	ENDP
+DELAY_BEEP PROC
+	MOV		DELB,A
+DELB_1:
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	SDZ		DELB
+	JMP		DELB_1
+	RET
+DELAY_BEEP ENDP
 
 		END
