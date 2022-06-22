@@ -1,32 +1,30 @@
 include HT66F70A.inc
 
 ds		.section		'data'
-DEL1		DB		?
-DEL2		DB		?
-DEL3		DB		?
+DEL1		DB		?	;DELAY變數
+DEL2		DB		?	;DELAY變數
+DEL3		DB		?	;DELAY變數
 DC_FLAG		DBIT		
 LINE_COUNT	DB		?
-LINE_COUNT1 DB		?
-LINE_COUNT2 DB		?
-DATA		DB		?
-DISPLAY_TIMES	DB	?
+LINE_COUNT1 DB		?	;LCM第一列字數控制
+LINE_COUNT2 DB		?	;LCM第二列字數控制
+DATA		DB		?	;LCM表格資料
 
 STACK_A		DB		?
 STACK_PSW	DB		?
 STACK_DEL1 	DB		?
 STACK_DEL2 	DB		?
 STACK_DEL3 	DB		?
-STACK_LINE_COUNT	DB	?
+STACK_LINE_COUNT1	DB	?
+STACK_LINE_COUNT2	DB	?
 STACK_DATA	DB		?
-
 STACK_TBHP	DB		?
 STACK_TBLP	DB		?
 
-DELA 	DB ?
-PITCH	DB ?		
-COUNT1 	DB ?
-COUNT2 	DB ?
-
+DELA 	DB ?	;BEEP DELAY
+PITCH	DB ?	;音調控制	
+COUNT1 	DB ?	;音長控制
+COUNT2 	DB ?	;音長控制
 
 LCM_EN		EQU		PE.2
 LCM_RW		EQU		PE.1
@@ -107,7 +105,6 @@ MAIN_2:
 	SDZ		LINE_COUNT2		;可顯示字數是否為0?
 	JMP		MAIN_2			;不是0，繼續顯示下個字
 	JMP		MAIN			;不是0，繼續顯示下個字
-
 ;===========================================
 ;	中斷發生，撥放第1首歌曲
 ;===========================================
@@ -121,14 +118,19 @@ ISR_EXTINT0:
 	MOV		STACK_DEL2,A
 	MOV		A,DEL3			;DEL3變數暫存
 	MOV		STACK_DEL3,A
-	;MOV		A,TBHP
-;	MOV		STACK_TBHP,A
-;	MOV		A,TBLP
-;	MOV		STACK_TBLP,A
-;	MOV		A,LINE_COUNT
-;	MOV		STACK_LINE_COUNT,A
-;	MOV		A,DATA
-;	MOV		STACK_DATA,A
+	MOV		A,TBHP
+	MOV		STACK_TBHP,A
+	MOV		A,TBLP
+	MOV		STACK_TBLP,A
+	MOV		A,DATA
+	MOV		STACK_DATA,A
+	MOV		A,LINE_COUNT1
+	MOV		STACK_LINE_COUNT1,A
+	MOV		A,LINE_COUNT2
+	MOV		STACK_LINE_COUNT2,A
+;===========================================
+;	LCM顯示
+;===========================================
 	CALL	CLEAR_LCM	
 MAIN_INT0:
 	MOV		A,80H			;設定顯示第一列，位置0
@@ -199,16 +201,17 @@ STOP_A:
 	JMP 	STOP_A
 	JMP		NEXT_PITCH_A
 END_INT0:
-	;MOV		A,STACK_DATA
-;	MOV		DATA,A
-;	MOV		A,STACK_LINE_COUNT
-;	MOV		LINE_COUNT,A
-;	MOV		A,STACK_TBHP
-;	MOV		TBHP,A
-;	MOV		A,STACK_TBLP
-;	MOV		TBLP,A
-	CALL	CLEAR
 	CALL	CLEAR_LCM
+	MOV		A,STACK_LINE_COUNT1
+	MOV		LINE_COUNT1,A
+	MOV		A,STACK_LINE_COUNT2
+	MOV		LINE_COUNT2,A
+	MOV		A,STACK_DATA
+	MOV		DATA,A
+	MOV		A,STACK_TBHP
+	MOV		TBHP,A
+	MOV		A,STACK_TBLP
+	MOV		TBLP,A
 	MOV		A,STACK_DEL3	;DEL3變數回復
 	MOV		DEL3,A
 	MOV		A,STACK_DEL2	;DEL2變數回復
@@ -233,10 +236,51 @@ ISR_EXTINT1:
 	MOV		STACK_DEL2,A
 	MOV		A,DEL3			;DEL3變數暫存
 	MOV		STACK_DEL3,A
-	;MOV		A,TBHP
-;	MOV		STACK_TBHP,A
-;	MOV		A,TBLP
-;	MOV		STACK_TBLP,A
+	MOV		A,TBHP
+	MOV		STACK_TBHP,A
+	MOV		A,TBLP
+	MOV		STACK_TBLP,A
+	MOV		A,DATA
+	MOV		STACK_DATA,A
+	MOV		A,LINE_COUNT1
+	MOV		STACK_LINE_COUNT1,A
+	MOV		A,LINE_COUNT2
+	MOV		STACK_LINE_COUNT2,A
+;===========================================
+;	LCM顯示
+;===========================================
+	CALL	CLEAR_LCM
+MAIN_INT1:
+	MOV		A,80H			;設定顯示第一列，位置0
+	CALL	WLCMC
+	CALL	DELAY
+	MOV		A,HIGH 	TAB_DATA_3
+	MOV		TBHP,A
+	MOV		A,LOW 	TAB_DATA_3
+	MOV		TBLP,A
+	MOV		A,07H
+	MOV		LINE_COUNT1,A	;設定第一列字數
+	MOV		A,04H
+	MOV		LINE_COUNT2,A	;設定第二列字數
+MAIN_INT1_1:
+	TABRD	DATA
+	MOV		A,DATA			;寫入顯示資料
+	CALL	WLCMD
+	CALL	DELAY
+	INC		TBLP
+	SDZ		LINE_COUNT1		;可顯示字數是否為0?
+	JMP		MAIN_INT1_1			;不是0，繼續顯示下個字
+	MOV		A,0C0H			;設定顯示第二列，位置0
+	CALL	WLCMC
+	CALL	DELAY
+MAIN_INT1_2:
+	TABRD	DATA
+	MOV		A,DATA			;寫入顯示資料
+	CALL	WLCMD
+	CALL	DELAY
+	INC		TBLP
+	SDZ		LINE_COUNT2		;可顯示字數是否為0?
+	JMP		MAIN_INT1_2			;不是0，繼續顯示下個字
 ;==========================================	
 ; 	歌曲撥放
 ;==========================================	
@@ -275,10 +319,17 @@ STOP_B:
 	JMP 	STOP_B
 	JMP		NEXT_PITCH_B
 END_INT1:
-;	MOV		A,STACK_TBHP
-;	MOV		TBHP,A
-;	MOV		A,STACK_TBLP
-;	MOV		TBLP,A
+	CALL	CLEAR_LCM
+	MOV		A,STACK_LINE_COUNT1
+	MOV		LINE_COUNT1,A
+	MOV		A,STACK_LINE_COUNT2
+	MOV		LINE_COUNT2,A
+	MOV		A,STACK_DATA
+	MOV		DATA,A
+	MOV		A,STACK_TBHP
+	MOV		TBHP,A
+	MOV		A,STACK_TBLP
+	MOV		TBLP,A
 	MOV		A,STACK_DEL3	;DEL3變數回復
 	MOV		DEL3,A
 	MOV		A,STACK_DEL2	;DEL2變數回復
@@ -303,10 +354,51 @@ ISR_EXTINT2:
 	MOV		STACK_DEL2,A
 	MOV		A,DEL3			;DEL3變數暫存
 	MOV		STACK_DEL3,A
-	;MOV		A,TBHP
-;	MOV		STACK_TBHP,A
-;	MOV		A,TBLP
-;	MOV		STACK_TBLP,A
+	MOV		A,TBHP
+	MOV		STACK_TBHP,A
+	MOV		A,TBLP
+	MOV		STACK_TBLP,A
+	MOV		A,DATA
+	MOV		STACK_DATA,A
+	MOV		A,LINE_COUNT1
+	MOV		STACK_LINE_COUNT1,A
+	MOV		A,LINE_COUNT2
+	MOV		STACK_LINE_COUNT2,A	
+;===========================================
+;	LCM顯示
+;===========================================
+	CALL	CLEAR_LCM
+MAIN_INT2:
+	MOV		A,80H			;設定顯示第一列，位置0
+	CALL	WLCMC
+	CALL	DELAY
+	MOV		A,HIGH 	TAB_DATA_4
+	MOV		TBHP,A
+	MOV		A,LOW 	TAB_DATA_4
+	MOV		TBLP,A
+	MOV		A,0FH
+	MOV		LINE_COUNT1,A	;設定第一列字數
+	MOV		A,0BH
+	MOV		LINE_COUNT2,A	;設定第二列字數
+MAIN_INT2_1:
+	TABRD	DATA
+	MOV		A,DATA			;寫入顯示資料
+	CALL	WLCMD
+	CALL	DELAY
+	INC		TBLP
+	SDZ		LINE_COUNT1		;可顯示字數是否為0?
+	JMP		MAIN_INT2_1			;不是0，繼續顯示下個字
+	MOV		A,0C0H			;設定顯示第二列，位置0
+	CALL	WLCMC
+	CALL	DELAY
+MAIN_INT2_2:
+	TABRD	DATA
+	MOV		A,DATA			;寫入顯示資料
+	CALL	WLCMD
+	CALL	DELAY
+	INC		TBLP
+	SDZ		LINE_COUNT2		;可顯示字數是否為0?
+	JMP		MAIN_INT2_2			;不是0，繼續顯示下個字
 ;==========================================	
 ; 	歌曲撥放
 ;==========================================	
@@ -345,10 +437,13 @@ STOP_C:
 	JMP 	STOP_C
 	JMP		NEXT_PITCH_C
 END_INT2:
-;	MOV		A,STACK_TBHP
-;	MOV		TBHP,A
-;	MOV		A,STACK_TBLP
-;	MOV		TBLP,A
+	CALL	CLEAR_LCM
+	MOV		A,STACK_LINE_COUNT1
+	MOV		LINE_COUNT1,A
+	MOV		A,STACK_LINE_COUNT2
+	MOV		LINE_COUNT2,A
+	MOV		A,STACK_DATA
+	MOV		DATA,A
 	MOV		A,STACK_DEL3	;DEL3變數回復
 	MOV		DEL3,A
 	MOV		A,STACK_DEL2	;DEL2變數回復
@@ -373,10 +468,60 @@ ISR_EXTINT3:
 	MOV		STACK_DEL2,A
 	MOV		A,DEL3			;DEL3變數暫存
 	MOV		STACK_DEL3,A
-	;MOV		A,TBHP
-;	MOV		STACK_TBHP,A
-;	MOV		A,TBLP
-;	MOV		STACK_TBLP,A
+	MOV		STACK_A,A		;累加器資料暫存
+	MOV		A,STATUS		
+	MOV		STACK_PSW,A		;MCU狀態暫存
+	MOV		A,DEL1			;DEL1變數暫存
+	MOV		STACK_DEL1,A
+	MOV		A,DEL2			;DEL2變數暫存
+	MOV		STACK_DEL2,A
+	MOV		A,DEL3			;DEL3變數暫存
+	MOV		STACK_DEL3,A
+	MOV		A,TBHP
+	MOV		STACK_TBHP,A
+	MOV		A,TBLP
+	MOV		STACK_TBLP,A
+	MOV		A,DATA
+	MOV		STACK_DATA,A
+	MOV		A,LINE_COUNT1
+	MOV		STACK_LINE_COUNT1,A
+	MOV		A,LINE_COUNT2
+	MOV		STACK_LINE_COUNT2,A
+;===========================================
+;	LCM顯示
+;===========================================	
+	CALL	CLEAR_LCM
+MAIN_INT3:
+	MOV		A,80H			;設定顯示第一列，位置0
+	CALL	WLCMC
+	CALL	DELAY
+	MOV		A,HIGH 	TAB_DATA_5
+	MOV		TBHP,A
+	MOV		A,LOW 	TAB_DATA_5
+	MOV		TBLP,A
+	MOV		A,0AH
+	MOV		LINE_COUNT1,A	;設定第一列字數
+	MOV		A,04H
+	MOV		LINE_COUNT2,A	;設定第二列字數
+MAIN_INT3_1:
+	TABRD	DATA
+	MOV		A,DATA			;寫入顯示資料
+	CALL	WLCMD
+	CALL	DELAY
+	INC		TBLP
+	SDZ		LINE_COUNT1		;可顯示字數是否為0?
+	JMP		MAIN_INT3_1			;不是0，繼續顯示下個字
+	MOV		A,0C0H			;設定顯示第二列，位置0
+	CALL	WLCMC
+	CALL	DELAY
+MAIN_INT3_2:
+	TABRD	DATA
+	MOV		A,DATA			;寫入顯示資料
+	CALL	WLCMD
+	CALL	DELAY
+	INC		TBLP
+	SDZ		LINE_COUNT2		;可顯示字數是否為0?
+	JMP		MAIN_INT3_2			;不是0，繼續顯示下個字
 ;==========================================	
 ; 	歌曲撥放
 ;==========================================	
@@ -415,10 +560,13 @@ STOP_D:
 	JMP 	STOP_D
 	JMP		NEXT_PITCH_D
 END_INT3:
-;	MOV		A,STACK_TBHP
-;	MOV		TBHP,A
-;	MOV		A,STACK_TBLP
-;	MOV		TBLP,A
+	CALL	CLEAR_LCM
+	MOV		A,STACK_LINE_COUNT1
+	MOV		LINE_COUNT1,A
+	MOV		A,STACK_LINE_COUNT2
+	MOV		LINE_COUNT2,A
+	MOV		A,STACK_DATA
+	MOV		DATA,A
 	MOV		A,STACK_DEL3	;DEL3變數回復
 	MOV		DEL3,A
 	MOV		A,STACK_DEL2	;DEL2變數回復
@@ -575,52 +723,94 @@ TAB_DATA_1:
 	DC		77H		;"w"
 	DC		69H		;"i"
 	DC		74H		;"t"
-	DC		63H		;"c“
-	DC		68H		;"h“
-	DC		20H		;" “
-	DC		6FH		;"o“
-	DC		6EH		;"n“
+	DC		63H		;"c"
+	DC		68H		;"h"
+	DC		20H		;" "
+	DC		6FH		;"o"
+	DC		6EH		;"n"
 TAB_DATA_2:
-	DC		57H		;"M"
+	DC		4DH		;"M"
 	DC		61H		;"a"
-	DC		74H		;"r"
-	DC		69H		;"y"
-	DC		6EH		;" "
-	DC		67H		;"h"
-	DC		20H		;"a"
-	DC		66H		;"d"
-	DC		6FH		;" "
-	DC		72H		;"a"
+	DC		72H		;"r"
+	DC		79H		;"y"
+	DC		20H		;" "
+	DC		68H		;"h"
+	DC		61H		;"a"
+	DC		64H		;"d"
+	DC		20H		;" "
+	DC		61H		;"a"
 	DC		20H		;" "
 	DC		73H		;"s"
-	DC		77H		;"m"
-	DC		69H		;"a"
-	DC		74H		;"l"
-	DC		63H		;"l“
-	DC		68H		;" “
-	DC		20H		;"l“
-	DC		6FH		;"i“
-	DC		6EH		;"t“
-	DC		6EH		;"t“
-	DC		6EH		;"l“
-	DC		6EH		;"e“
-	DC		6EH		;" “
-	DC		6EH		;"l“
-	DC		6EH		;"a“
-	DC		6EH		;"m“
-	DC		6EH		;"b“
-TAB3_DATA:
-	DC		57H		;"F"
+	DC		6DH		;"m"
 	DC		61H		;"a"
-	DC		74H		;"m"
+	DC		6CH		;"l"
+	DC		6CH		;"l"
+	DC		20H		;" "
+	DC		6CH		;"l"
 	DC		69H		;"i"
-	DC		6EH		;"l"
-	DC		67H		;"y"
+	DC		74H		;"t"
+	DC		74H		;"t"
+	DC		6CH		;"l"
+	DC		65H		;"e"
+	DC		20H		;" "
+	DC		6CH		;"l"
+	DC		61H		;"a"
+	DC		6DH		;"m"
+	DC		62H		;"b"
+TAB_DATA_3:
+	DC		46H		;"F"
+	DC		61H		;"a"
+	DC		6DH		;"m"
+	DC		69H		;"i"
+	DC		6CH		;"l"
+	DC		79H		;"y"
 	DC		20H		;""
-	DC		66H		;"M"
-	DC		6FH		;"a"
+	DC		4DH		;"M"
+	DC		61H		;"a"
 	DC		72H		;"r"
-	DC		20H		;"t"
+	DC		74H		;"t"
+TAB_DATA_4:
+	DC		54H		;"T"
+	DC		77H		;"w"
+	DC		69H		;"i"
+	DC		6EH		;"n"
+	DC		6BH		;"k"
+	DC		6CH		;"l"
+	DC		65H		;"e"
+	DC		20H		;" "
+	DC		54H		;"T"
+	DC		77H		;"w"
+	DC		69H		;"i"
+	DC		6EH		;"n"
+	DC		6BH		;"k"
+	DC		6CH		;"l"
+	DC		65H		;"e"
+	DC		6CH		;"l"
+	DC		69H		;"i"
+	DC		74H		;"t"
+	DC		74H		;"t"
+	DC		6CH		;"l"
+	DC		65H		;"e"
+	DC		20H		;" "
+	DC		73H		;"s"
+	DC		74H		;"t"
+	DC		61H		;"a"
+	DC		72H		;"r"
+TAB_DATA_5:
+	DC		43H		;"C"
+	DC		61H		;"a"
+	DC		74H		;"t"
+	DC		63H		;"c"
+	DC		68H		;"h"
+	DC		20H		;" "
+	DC		74H		;"t"
+	DC		68H		;"h"
+	DC		65H		;"e"
+	DC		20H		;" "
+	DC		65H		;"e"
+	DC		65H		;"e"
+	DC		6CH		;"l"
+	DC		73H		;"s"
 TAB_PITCH_A:									;綿羊
 	DC	200000/(1318*2)+(1318/(2*10)) 	SHL 8  	;MI. 3.
 	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
