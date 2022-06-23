@@ -91,6 +91,7 @@ MAIN_1:
 	CALL	WLCMD
 	CALL	DELAY
 	INC		TBLP
+	CALL	MEM_CHECK
 	SDZ		LINE_COUNT1		;可顯示字數是否為0?
 	JMP		MAIN_1			;不是0，繼續顯示下個字
 	MOV		A,0C0H			;設定顯示第二列，位置0
@@ -102,11 +103,12 @@ MAIN_2:
 	CALL	WLCMD
 	CALL	DELAY
 	INC		TBLP
+	CALL	MEM_CHECK
 	SDZ		LINE_COUNT2		;可顯示字數是否為0?
 	JMP		MAIN_2			;不是0，繼續顯示下個字
 	JMP		MAIN			;不是0，繼續顯示下個字
 ;===========================================
-;	中斷發生，撥放第1首歌曲
+;	中斷發生，播放第1首歌曲
 ;===========================================
 ISR_EXTINT0:
 	MOV		STACK_A,A		;累加器資料暫存
@@ -150,6 +152,7 @@ MAIN_INT0_1:
 	CALL	WLCMD
 	CALL	DELAY
 	INC		TBLP
+	CALL	MEM_CHECK
 	SDZ		LINE_COUNT1		;可顯示字數是否為0?
 	JMP		MAIN_INT0_1			;不是0，繼續顯示下個字
 	MOV		A,0C0H			;設定顯示第二列，位置0
@@ -161,15 +164,16 @@ MAIN_INT0_2:
 	CALL	WLCMD
 	CALL	DELAY
 	INC		TBLP
+	CALL	MEM_CHECK
 	SDZ		LINE_COUNT2		;可顯示字數是否為0?
 	JMP		MAIN_INT0_2			;不是0，繼續顯示下個字
 ;==========================================	
 ; 	歌曲
 ;==========================================
 	CLR 	PCC.2
-	MOV		A,HIGH TAB_PITCH_A
+	MOV		A,HIGH 	TAB_PITCH_A
 	MOV		TBHP,A
-	MOV		A,LOW TAB_PITCH_A
+	MOV		A,LOW 	TAB_PITCH_A
 	MOV		TBLP,A	
 NEXT_PITCH_A:
 	TABRD	PITCH
@@ -179,6 +183,7 @@ NEXT_PITCH_A:
 	JMP		END_INT0
 	MOV		COUNT1,A
 	INC		TBLP
+	CALL	MEM_CHECK
 LOOP_A:
 	MOV		A,10
 	MOV     COUNT2,A
@@ -224,7 +229,7 @@ END_INT0:
 	CLR		INT0F
 	RETI
 ;===========================================
-;	中斷發生，撥放第2首歌曲
+;	中斷發生，播放第2首歌曲
 ;===========================================
 ISR_EXTINT1:
 	MOV		STACK_A,A		;累加器資料暫存
@@ -268,6 +273,7 @@ MAIN_INT1_1:
 	CALL	WLCMD
 	CALL	DELAY
 	INC		TBLP
+	CALL	MEM_CHECK
 	SDZ		LINE_COUNT1		;可顯示字數是否為0?
 	JMP		MAIN_INT1_1			;不是0，繼續顯示下個字
 	MOV		A,0C0H			;設定顯示第二列，位置0
@@ -279,15 +285,16 @@ MAIN_INT1_2:
 	CALL	WLCMD
 	CALL	DELAY
 	INC		TBLP
+	CALL	MEM_CHECK
 	SDZ		LINE_COUNT2		;可顯示字數是否為0?
 	JMP		MAIN_INT1_2			;不是0，繼續顯示下個字
 ;==========================================	
-; 	歌曲撥放
+; 	歌曲播放
 ;==========================================	
 	CLR 	PCC.2
-	MOV		A,HIGH TAB_PITCH_B
+	MOV		A,HIGH 	TAB_PITCH_B
 	MOV		TBHP,A
-	MOV		A,LOW TAB_PITCH_B
+	MOV		A,LOW 	TAB_PITCH_B
 	MOV		TBLP,A
 NEXT_PITCH_B:
 	TABRD	PITCH
@@ -297,6 +304,7 @@ NEXT_PITCH_B:
 	JMP		END_INT1
 	MOV		COUNT1,A
 	INC		TBLP
+	CALL	MEM_CHECK
 LOOP_B:
 	MOV		A,10
 	MOV     COUNT2,A
@@ -342,7 +350,7 @@ END_INT1:
 	CLR		INT1F
 	RETI
 ;===========================================
-;	中斷發生，撥放第3首歌曲
+;	中斷發生，播放第3首歌曲
 ;===========================================	
 ISR_EXTINT2:
 	MOV		STACK_A,A		;累加器資料暫存
@@ -386,6 +394,7 @@ MAIN_INT2_1:
 	CALL	WLCMD
 	CALL	DELAY
 	INC		TBLP
+	CALL	MEM_CHECK
 	SDZ		LINE_COUNT1		;可顯示字數是否為0?
 	JMP		MAIN_INT2_1			;不是0，繼續顯示下個字
 	MOV		A,0C0H			;設定顯示第二列，位置0
@@ -397,15 +406,16 @@ MAIN_INT2_2:
 	CALL	WLCMD
 	CALL	DELAY
 	INC		TBLP
+	CALL	MEM_CHECK
 	SDZ		LINE_COUNT2		;可顯示字數是否為0?
 	JMP		MAIN_INT2_2			;不是0，繼續顯示下個字
 ;==========================================	
-; 	歌曲撥放
+; 	歌曲播放
 ;==========================================	
 	CLR 	PCC.2
-	MOV		A,HIGH TAB_PITCH_C
+	MOV		A,HIGH 	TAB_PITCH_C
 	MOV		TBHP,A
-	MOV		A,LOW TAB_PITCH_C
+	MOV		A,LOW 	TAB_PITCH_C
 	MOV		TBLP,A
 NEXT_PITCH_C:
 	TABRD	PITCH
@@ -415,6 +425,7 @@ NEXT_PITCH_C:
 	JMP		END_INT2
 	MOV		COUNT1,A
 	INC		TBLP
+	CALL	MEM_CHECK
 LOOP_C:
 	MOV		A,8
 	MOV     COUNT2,A
@@ -456,7 +467,7 @@ END_INT2:
 	CLR		INT2F
 	RETI
 ;===========================================
-;	中斷發生，撥放第4首歌曲
+;	中斷發生，播放第4首歌曲
 ;===========================================	
 ISR_EXTINT3:
 	MOV		STACK_A,A		;累加器資料暫存
@@ -500,6 +511,7 @@ MAIN_INT3_1:
 	CALL	WLCMD
 	CALL	DELAY
 	INC		TBLP
+	CALL	MEM_CHECK
 	SDZ		LINE_COUNT1		;可顯示字數是否為0?
 	JMP		MAIN_INT3_1			;不是0，繼續顯示下個字
 	MOV		A,0C0H			;設定顯示第二列，位置0
@@ -511,15 +523,16 @@ MAIN_INT3_2:
 	CALL	WLCMD
 	CALL	DELAY
 	INC		TBLP
+	CALL	MEM_CHECK
 	SDZ		LINE_COUNT2		;可顯示字數是否為0?
 	JMP		MAIN_INT3_2			;不是0，繼續顯示下個字
 ;==========================================	
-; 	歌曲撥放
+; 	歌曲播放
 ;==========================================	
 	CLR 	PCC.2
-	MOV		A,HIGH TAB_PITCH_D
+	MOV		A,HIGH 	TAB_PITCH_D
 	MOV		TBHP,A
-	MOV		A,LOW TAB_PITCH_D
+	MOV		A,LOW 	TAB_PITCH_D
 	MOV		TBLP,A
 NEXT_PITCH_D:
 	TABRD	PITCH
@@ -529,6 +542,7 @@ NEXT_PITCH_D:
 	JMP		END_INT3
 	MOV		COUNT1,A
 	INC		TBLP
+	CALL	MEM_CHECK
 LOOP_D:
 	MOV		A,8
 	MOV     COUNT2,A
@@ -569,6 +583,15 @@ END_INT3:
 	MOV		A,STACK_A		;累加器資料回復
 	CLR		INT3F
 	RETI
+	
+MEM_CHECK	PROC
+	SNZ		TBLP
+	INC		TBHP
+	JMP		END_CHECK	
+END_CHECK:
+	RET
+MEM_CHECK	ENDP
+
 INIT_LCM	PROC
 	CLR		LCM_EN
 	CLR		LCM_RW
@@ -697,7 +720,7 @@ WAIT		PROC
 	RET
 WAIT		ENDP
 
-TAB_DATA_1:
+TAB_DATA_1:			;等待使用者撥動指撥開關
 	DC		57H		;"W"
 	DC		61H		;"a"
 	DC		69H		;"i"
@@ -719,7 +742,7 @@ TAB_DATA_1:
 	DC		20H		;" "
 	DC		6FH		;"o"
 	DC		6EH		;"n"
-TAB_DATA_2:
+TAB_DATA_2:			;綿羊
 	DC		4DH		;"M"
 	DC		61H		;"a"
 	DC		72H		;"r"
@@ -748,7 +771,7 @@ TAB_DATA_2:
 	DC		61H		;"a"
 	DC		6DH		;"m"
 	DC		62H		;"b"
-TAB_DATA_3:
+TAB_DATA_3:			;全家
 	DC		46H		;"F"
 	DC		61H		;"a"
 	DC		6DH		;"m"
@@ -760,7 +783,7 @@ TAB_DATA_3:
 	DC		61H		;"a"
 	DC		72H		;"r"
 	DC		74H		;"t"
-TAB_DATA_4:
+TAB_DATA_4:			;小星星
 	DC		54H		;"T"
 	DC		77H		;"w"
 	DC		69H		;"i"
@@ -787,7 +810,7 @@ TAB_DATA_4:
 	DC		74H		;"t"
 	DC		61H		;"a"
 	DC		72H		;"r"
-TAB_DATA_5:
+TAB_DATA_5:			;捉泥鰍
 	DC		43H		;"C"
 	DC		61H		;"a"
 	DC		74H		;"t"
@@ -843,51 +866,51 @@ TAB_PITCH_B:									;全家
 	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
 	DC	200000/(1047*2)+(1047/(2*10)) 	SHL 8  	;DO. 1.
 	DC 	0
-TAB_PITCH_C:
+TAB_PITCH_C:									;小星星
 	DC	200000/(523*2)+(523/(2*10)) 	SHL 8  	;DO 1
 	DC	200000/(523*2)+(523/(2*10)) 	SHL 8  	;DO 1
 	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
 	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
 	DC	200000/(880*2)+(880/(2*10)) 	SHL 8  	;LA 6
 	DC	200000/(880*2)+(880/(2*10)) 	SHL 8  	;LA 6
-	DC	200000/(785*2)+(785/(10)) 	SHL 8  	;SO 5
+	DC	200000/(785*2)+(785/(10)) 		SHL 8  	;SO 5
 	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
 	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
 	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
 	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
 	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
 	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
-	DC	200000/(523*2)+(523/(10)) 	SHL 8  	;DO 1
+	DC	200000/(523*2)+(523/(10)) 		SHL 8  	;DO 1
 	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
 	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
 	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
 	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
 	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
 	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
-	DC	200000/(587*2)+(587/(10)) 	SHL 8  	;RE 2
+	DC	200000/(587*2)+(587/(10)) 		SHL 8  	;RE 2
 	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
 	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
 	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
 	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
 	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
 	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
-	DC	200000/(587*2)+(587/(10)) 	SHL 8  	;RE 2
+	DC	200000/(587*2)+(587/(10)) 		SHL 8  	;RE 2
 	DC	200000/(523*2)+(523/(2*10)) 	SHL 8  	;DO 1
 	DC	200000/(523*2)+(523/(2*10)) 	SHL 8  	;DO 1
 	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
 	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
 	DC	200000/(880*2)+(880/(2*10)) 	SHL 8  	;LA 6
 	DC	200000/(880*2)+(880/(2*10)) 	SHL 8  	;LA 6
-	DC	200000/(785*2)+(785/(10)) 	SHL 8  	;SO 5
+	DC	200000/(785*2)+(785/(10)) 		SHL 8  	;SO 5
 	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
 	DC	200000/(698*2)+(698/(2*10)) 	SHL 8  	;FA 4
 	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
 	DC	200000/(659*2)+(659/(2*10)) 	SHL 8  	;MI 3
 	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
 	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
-	DC	200000/(523*2)+(523/(10)) 	SHL 8  	;DO 1
+	DC	200000/(523*2)+(523/(10)) 		SHL 8  	;DO 1
 	DC	0
-TAB_PITCH_D:
+TAB_PITCH_D:									;捉泥鰍
 	DC	200000/(880*2)+(880/(2*10)) 	SHL 8  	;LA 6
 	DC	200000/(1760*2)+(1760/(4*10)) 	SHL 8  	;LA. 6.
 	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
@@ -898,7 +921,7 @@ TAB_PITCH_D:
 	DC	200000/(659*2)+(659/(4*10)) 	SHL 8  	;MI 3
 	DC	200000/(659*2)+(659/(4*10)) 	SHL 8  	;MI 3
 	DC	200000/(587*2)+(587/(4*10)) 	SHL 8  	;RE 2
-	DC	200000/(659*2)+(659/(10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(10)) 		SHL 8  	;MI 3
 	DC	200000/(587*2)+(587/(2*10)) 	SHL 8  	;RE 2
 	DC	200000/(1174*2)+(1174/(4*10)) 	SHL 8  	;RE. 2.
 	DC	200000/(523*2)+(523/(4*10)) 	SHL 8  	;DO 1
@@ -909,7 +932,7 @@ TAB_PITCH_D:
 	DC	200000/(659*2)+(659/(4*10)) 	SHL 8  	;MI 3
 	DC	200000/(659*2)+(659/(4*10)) 	SHL 8  	;MI 3
 	DC	200000/(587*2)+(587/(4*10)) 	SHL 8  	;RE 2
-	DC	200000/(659*2)+(659/(10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(10)) 		SHL 8  	;MI 3
 	DC	200000/(880*2)+(880/(2*10)) 	SHL 8  	;LA 6
 	DC	200000/(1760*2)+(1760/(4*10)) 	SHL 8  	;LA. 6.
 	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
@@ -920,7 +943,7 @@ TAB_PITCH_D:
 	DC	200000/(698*2)+(698/(4*10)) 	SHL 8  	;FA 4
 	DC	200000/(659*2)+(659/(4*10)) 	SHL 8  	;MI 3
 	DC	200000/(587*2)+(587/(4*10)) 	SHL 8  	;RE 2
-	DC	200000/(659*2)+(659/(10)) 	SHL 8  	;MI 3
+	DC	200000/(659*2)+(659/(10)) 		SHL 8  	;MI 3
 	DC	200000/(785*2)+(785/(2*10)) 	SHL 8  	;SO 5
 	DC	200000/(1570*2)+(1570/(4*10)) 	SHL 8  	;SO. 5.
 	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
@@ -931,7 +954,7 @@ TAB_PITCH_D:
 	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
 	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
 	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
-	DC	200000/(880*2)+(880/(10)) 	SHL 8  	;LA 6
+	DC	200000/(880*2)+(880/(10)) 		SHL 8  	;LA 6
 	DC	200000/(1047*2)+(1047/(2*10)) 	SHL 8  	;DO. 1.
 	DC	200000/(1047*2)+(1047/(4*10)) 	SHL 8  	;DO. 1.
 	DC	200000/(1047*2)+(1047/(4*10)) 	SHL 8  	;DO. 1.
@@ -954,7 +977,7 @@ TAB_PITCH_D:
 	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
 	DC	200000/(880*2)+(880/(4*10)) 	SHL 8  	;LA 6
 	DC	200000/(785*2)+(785/(4*10)) 	SHL 8  	;SO 5
-	DC	200000/(880*2)+(880/(10)) 	SHL 8  	;LA 6
+	DC	200000/(880*2)+(880/(10)) 		SHL 8  	;LA 6
 	DC	0
 END	
 	
